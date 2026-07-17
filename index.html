@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TP — Spark SQL</title>
+<style>
+  :root {
+    --navy: #1a1b3a;
+    --navy-2: #232a4d;
+    --orange: #ff6b35;
+    --orange-l: #ffab8a;
+    --cream: #ffffff;
+    --gray: #5b6178;
+    --lightbg: #f4f5fa;
+    --codebg: #0e1226;
+    --codefg: #d7dcf5;
+    --border: #e4e6ee;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: Calibri, "Segoe UI", Arial, sans-serif;
+    color: #1a1d2e;
+    background: var(--lightbg);
+    line-height: 1.55;
+  }
+  header.hero {
+    background: var(--navy);
+    color: #fff;
+    padding: 56px 24px 64px;
+    position: relative;
+    overflow: hidden;
+  }
+  header.hero::before {
+    content: "";
+    position: absolute;
+    top: -80px; right: -60px;
+    width: 320px; height: 320px;
+    border-radius: 50%;
+    background: var(--navy-2);
+  }
+  header.hero::after {
+    content: "";
+    position: absolute;
+    bottom: -100px; right: 120px;
+    width: 200px; height: 200px;
+    border-radius: 50%;
+    background: var(--orange);
+    opacity: 0.18;
+  }
+  .hero-inner { max-width: 880px; margin: 0 auto; position: relative; z-index: 1; }
+  .kicker {
+    color: var(--orange-l); font-weight: 700; font-size: 13px;
+    letter-spacing: 3px; text-transform: uppercase; margin-bottom: 14px;
+  }
+  h1.title {
+    font-family: Cambria, Georgia, serif;
+    font-size: clamp(34px, 6vw, 52px);
+    margin: 0 0 12px;
+    font-weight: 700;
+  }
+  .subtitle { color: #c7cbe0; font-size: 18px; margin-bottom: 28px; max-width: 620px; }
+  .meta-row { display: flex; flex-wrap: wrap; gap: 14px; }
+  .meta-chip {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    padding: 8px 16px; border-radius: 999px; font-size: 14px; color: #e7e9f5;
+  }
+  main { max-width: 880px; margin: 0 auto; padding: 40px 24px 100px; }
+
+  .timeline {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+    margin: -34px 0 44px;
+    position: relative; z-index: 2;
+  }
+  .timeline a {
+    background: #fff; border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 16px; text-decoration: none; color: inherit;
+    box-shadow: 0 4px 14px rgba(20,20,50,0.08);
+    display: block; transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .timeline a:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(20,20,50,0.12); }
+  .timeline .num { color: var(--orange); font-weight: 700; font-size: 12px; letter-spacing: 1px; }
+  .timeline .lbl { font-weight: 700; font-size: 14px; margin-top: 2px; }
+  .timeline .tm { color: var(--gray); font-size: 12px; margin-top: 2px; }
+
+  section.step {
+    background: #fff; border: 1px solid var(--border); border-radius: 14px;
+    padding: 32px 32px 8px; margin-bottom: 28px;
+    scroll-margin-top: 20px;
+  }
+  .step-head { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
+  .step-badge {
+    background: var(--navy); color: #fff; font-weight: 700; font-size: 13px;
+    padding: 6px 14px; border-radius: 999px; white-space: nowrap;
+  }
+  .step-time { color: var(--orange); font-weight: 700; font-size: 14px; }
+  h2.step-title {
+    font-family: Cambria, Georgia, serif; font-size: 26px; margin: 10px 0 18px; color: var(--navy);
+  }
+  h3.sub { font-size: 17px; margin: 24px 0 8px; color: var(--navy); }
+  p { margin: 0 0 14px; }
+
+  pre.code {
+    background: var(--codebg); color: var(--codefg);
+    border-radius: 10px; padding: 18px 20px; overflow-x: auto;
+    font-family: Consolas, "SF Mono", Menlo, monospace; font-size: 13.5px;
+    margin: 0 0 18px; line-height: 1.6; position: relative;
+  }
+  .copy-btn {
+    position: absolute; top: 10px; right: 10px;
+    background: rgba(255,255,255,0.08); color: #cfd3ea; border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 6px; font-size: 11px; padding: 5px 10px; cursor: pointer;
+  }
+  .copy-btn:hover { background: rgba(255,255,255,0.16); }
+
+  .callout {
+    border-left: 4px solid var(--orange); background: #fff1ea;
+    border-radius: 8px; padding: 14px 18px; margin: 0 0 18px;
+  }
+  .callout .ct { font-weight: 700; color: #9a3b12; margin-bottom: 4px; font-size: 14px; }
+  .callout .cb { color: #4a3323; font-size: 14.5px; }
+
+  ul.tasks { list-style: none; padding: 0; margin: 0 0 18px; }
+  ul.tasks li {
+    display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; font-size: 15px;
+  }
+  ul.tasks input[type="checkbox"] {
+    margin-top: 3px; width: 17px; height: 17px; accent-color: var(--orange); cursor: pointer; flex-shrink: 0;
+  }
+  ul.tasks li.done label { text-decoration: line-through; color: var(--gray); }
+
+  table {
+    width: 100%; border-collapse: collapse; margin-bottom: 18px; font-size: 14.5px;
+  }
+  th { background: var(--navy); color: #fff; text-align: left; padding: 10px 12px; }
+  td { padding: 9px 12px; border-bottom: 1px solid var(--border); }
+  tr:nth-child(even) td { background: var(--lightbg); }
+
+  footer {
+    text-align: center; color: var(--gray); font-size: 13px; padding: 30px 24px 50px;
+  }
+
+  @media (max-width: 600px) {
+    section.step { padding: 24px 18px 6px; }
+    header.hero { padding: 44px 18px 56px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <div class="kicker">Big Data · 2025 – 2026</div>
+    <h1 class="title">TP — Spark SQL</h1>
+    <p class="subtitle">Séance pratique d'une heure : installer, manipuler et interroger des données avec Spark SQL.</p>
+    <div class="meta-row">
+      <span class="meta-chip">⏱ 1 heure</span>
+      <span class="meta-chip">Dieynaba Sall &amp; Awa Wade — Groupe G2</span>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <nav class="timeline">
+    <a href="#etape1"><div class="num">ÉTAPE 1</div><div class="lbl">Installation</div><div class="tm">10 min</div></a>
+    <a href="#etape2"><div class="num">ÉTAPE 2</div><div class="lbl">Prise en main</div><div class="tm">10 min</div></a>
+    <a href="#etape3"><div class="num">ÉTAPE 3</div><div class="lbl">Requêtes SQL</div><div class="tm">15 min</div></a>
+    <a href="#etape4"><div class="num">ÉTAPE 4</div><div class="lbl">API DataFrame</div><div class="tm">15 min</div></a>
+    <a href="#etape5"><div class="num">ÉTAPE 5</div><div class="lbl">Autonomie</div><div class="tm">8 min</div></a>
+    <a href="#etape6"><div class="num">ÉTAPE 6</div><div class="lbl">Clôture</div><div class="tm">2 min</div></a>
+  </nav>
+
+  <!-- ETAPE 1 -->
+  <section class="step" id="etape1">
+    <div class="step-head">
+      <span class="step-badge">ÉTAPE 1</span>
+      <span class="step-time">10 min</span>
+    </div>
+    <h2 class="step-title">Installation &amp; vérification</h2>
+
+    <h3 class="sub">Prérequis</h3>
+    <ul class="tasks">
+      <li><input type="checkbox" id="c1"><label for="c1">Java JDK 8 ou 11 installé</label></li>
+      <li><input type="checkbox" id="c2"><label for="c2">Python 3.9 ou plus</label></li>
+      <li><input type="checkbox" id="c3"><label for="c3">Connexion internet pour l'installation de PySpark</label></li>
+    </ul>
+
+    <h3 class="sub">Commandes à exécuter</h3>
+    <pre class="code"><button class="copy-btn" onclick="copyCode(this)">Copier</button># Vérifier Java
+java -version
+
+# Installer PySpark
+pip install pyspark
+
+# Vérifier l'installation
+pyspark --version</pre>
+
+    <div class="callout">
+      <div class="ct">Si ça bloque</div>
+      <div class="cb">Le cas le plus fréquent est l'absence de Java. Sur Mac : <code>brew install openjdk@11</code>. Sur Ubuntu/Debian : <code>sudo apt install openjdk-11-jdk</code>. Vérifiez ensuite que JAVA_HOME est bien défini.</div>
+    </div>
+  </section>
+
+  <!-- ETAPE 2 -->
+  <section class="step" id="etape2">
+    <div class="step-head">
+      <span class="step-badge">ÉTAPE 2</span>
+      <span class="step-time">10 min</span>
+    </div>
+    <h2 class="step-title">Prise en main</h2>
+
+    <p>Créez un fichier <code>ventes.csv</code> avec le contenu suivant :</p>
+    <pre class="code"><button class="copy-btn" onclick="copyCode(this)">Copier</button>date,region,produit,montant
+2026-01-05,Dakar,Ordinateur,450000
+2026-01-06,Thies,Telephone,120000
+2026-01-07,Ziguinchor,Ordinateur,480000
+2026-01-08,Dakar,Tablette,95000
+2026-01-09,Saint-Louis,Telephone,110000
+2026-01-10,Kaolack,Ordinateur,470000
+2026-01-11,Dakar,Telephone,125000
+2026-01-12,Ziguinchor,Tablette,90000
+2026-01-13,Thies,Ordinateur,460000
+2026-01-14,Dakar,Ordinateur,455000
+2026-01-15,Kaolack,Telephone,115000
+2026-01-16,Ziguinchor,Telephone,118000</pre>
+
+    <p>Puis lancez Python (ou un notebook Jupyter) et créez votre SparkSession :</p>
+    <pre class="code"><button class="copy-btn" onclick="copyCode(this)">Copier</button>from pyspark.sql import SparkSession
+
+spark = SparkSession.builder \
+    .appName("TP_Spark_SQL") \
+    .master("local[*]") \
+    .getOrCreate()
+
+# Chargement du CSV
+df = spark.read.csv("ventes.csv", header=True, inferSchema=True)
+
+df.show()
+df.printSchema()</pre>
+
+    <div class="callout">
+      <div class="ct">Vérification</div>
+      <div class="cb"><code>df.show()</code> doit afficher les 12 lignes du fichier. <code>df.printSchema()</code> doit montrer que <code>montant</code> est bien détecté comme un entier grâce à <code>inferSchema=True</code>.</div>
+    </div>
+  </section>
+
+  <!-- ETAPE 3 -->
+  <section class="step" id="etape3">
+    <div class="step-head">
+      <span class="step-badge">ÉTAPE 3</span>
+      <span class="step-time">15 min</span>
+    </div>
+    <h2 class="step-title">Requêtes SQL</h2>
+
+    <p>Créez d'abord une vue temporaire pour interroger le DataFrame en SQL :</p>
+    <pre class="code"><button class="copy-btn" onclick="copyCode(this)">Copier</button>df.createOrReplaceTempView("ventes")</pre>
+
+    <h3 class="sub">Exercice guidé 1 — Total des ventes par région</h3>
+    <pre class="code"><button class="copy-btn" onclick="copyCode(this)">Copier</button>spark.sql("""
+    SELECT region, SUM(montant) AS total
+    FROM ventes
+    GROUP BY region
+    ORDER BY total DESC
+""").show()</pre>
+
+    <h3 class="sub">Exercice guidé 2 — Filtrer un seul produit</h3>
+    <pre class="code"><button class="copy-btn" onclick="copyCode(this)">Copier</button>spark.sql("""
+    SELECT * FROM ventes
+    WHERE produit = 'Ordinateur'
+""").show()</pre>
+
+    <h3 class="sub">À vous de jouer</h3>
+    <ul class="tasks">
+      <li><input type="checkbox" id="t1"><label for="t1">Écrivez une requête qui affiche le nombre de ventes par produit</label></li>
+      <li><input type="checkbox" id="t2"><label for="t2">Écrivez une requête qui affiche la vente la plus élevée (MAX)</label></li>
+      <li><input type="checkbox" id="t3"><label for="t3">Écrivez une requête qui affiche la moyenne des montants par région</label></li>
+    </ul>
+  </section>
+
+  <!-- ETAPE 4 -->
+  <section class="step" id="etape4">
+    <div class="step-head">
+      <span class="step-badge">ÉTAPE 4</span>
+      <span class="step-time">15 min</span>
+    </div>
+    <h2 class="step-title">API DataFrame</h2>
+
+    <p>Les mêmes résultats, mais écrits avec l'API DataFrame plutôt qu'en SQL.</p>
+
+    <h3 class="sub">Équivalent de l'exercice 1</h3>
+    <pre class="code"><button class="copy-btn" onclick="copyCode(this)">Copier</button>from pyspark.sql.functions import sum, desc
+
+(df.groupBy("region")
+   .agg(sum("montant").alias("total"))
+   .orderBy(desc("total"))
+   .show())</pre>
+
+    <h3 class="sub">Équivalent de l'exercice 2</h3>
+    <pre class="code"><button class="copy-btn" onclick="copyCode(this)">Copier</button>df.filter(df.produit == "Ordinateur").show()</pre>
+
+    <h3 class="sub">À vous de jouer</h3>
+    <ul class="tasks">
+      <li><input type="checkbox" id="t4"><label for="t4">Reprenez vos 3 requêtes SQL de l'étape 3 et réécrivez-les avec l'API DataFrame</label></li>
+      <li><input type="checkbox" id="t5"><label for="t5">Comparez : est-ce plus lisible en SQL ou en DataFrame, selon vous ?</label></li>
+    </ul>
+  </section>
+
+  <!-- ETAPE 5 -->
+  <section class="step" id="etape5">
+    <div class="step-head">
+      <span class="step-badge">ÉTAPE 5</span>
+      <span class="step-time">8 min</span>
+    </div>
+    <h2 class="step-title">Exercices en autonomie</h2>
+
+    <p>En binôme, terminez les défis suivants — SQL ou DataFrame, au choix :</p>
+    <ul class="tasks">
+      <li><input type="checkbox" id="d1"><label for="d1"><strong>Défi 1</strong> — Quelle région a réalisé le plus de ventes en <em>nombre de transactions</em> (pas en montant) ?</label></li>
+      <li><input type="checkbox" id="d2"><label for="d2"><strong>Défi 2</strong> — Ajoutez une colonne qui classe chaque vente en « grosse vente » (&gt; 400 000) ou « petite vente » (≤ 400 000)</label></li>
+      <li><input type="checkbox" id="d3"><label for="d3"><strong>Défi 3 (bonus)</strong> — Sauvegardez le résultat de l'étape 3 (total par région) dans un fichier Parquet avec <code>.write.parquet("resultat")</code></label></li>
+    </ul>
+
+    <div class="callout">
+      <div class="ct">Piste pour le défi 2</div>
+      <div class="cb">Regardez du côté de la fonction <code>when()</code> dans <code>pyspark.sql.functions</code>, ou d'une clause <code>CASE WHEN</code> en SQL.</div>
+    </div>
+  </section>
+
+  <!-- ETAPE 6 -->
+  <section class="step" id="etape6">
+    <div class="step-head">
+      <span class="step-badge">ÉTAPE 6</span>
+      <span class="step-time">2 min</span>
+    </div>
+    <h2 class="step-title">Correction &amp; clôture</h2>
+    <p>Correction rapide des défis avec toute la classe, questions ouvertes, et rappel des points clés de la séance :</p>
+    <table>
+      <tr><th>À retenir</th></tr>
+      <tr><td>SQL et DataFrame API produisent toujours le même résultat — le choix est une question de préférence</td></tr>
+      <tr><td><code>createOrReplaceTempView</code> est indispensable avant toute requête SQL</td></tr>
+      <tr><td><code>inferSchema=True</code> évite d'avoir toutes les colonnes en texte</td></tr>
+    </table>
+  </section>
+
+</main>
+
+<footer>
+  TP Spark SQL · Big Data 2025–2026 · Dieynaba Sall &amp; Awa Wade — Groupe G2<br>
+  Votre progression est sauvegardée automatiquement dans ce navigateur.
+</footer>
+
+<script>
+  // Persist checkbox state locally per browser
+  document.querySelectorAll('input[type="checkbox"]').forEach(function(box) {
+    const key = "tp-spark-" + box.id;
+    const saved = localStorage.getItem(key);
+    if (saved === "1") { box.checked = true; box.closest('li') && box.closest('li').classList.add('done'); }
+    box.addEventListener('change', function() {
+      localStorage.setItem(key, box.checked ? "1" : "0");
+      const li = box.closest('li');
+      if (li) li.classList.toggle('done', box.checked);
+    });
+  });
+
+  function copyCode(btn) {
+    const pre = btn.parentElement;
+    const text = pre.innerText.replace(/^Copier\s*/, "");
+    navigator.clipboard.writeText(text).then(function() {
+      const old = btn.textContent;
+      btn.textContent = "Copié !";
+      setTimeout(function() { btn.textContent = old; }, 1500);
+    });
+  }
+</script>
+
+</body>
+</html>
